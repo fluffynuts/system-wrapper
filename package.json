@@ -45,10 +45,10 @@
     "ts-jest": "^29.4.0",
     "tslint": "^5.20.1",
     "typescript": "^5.8.3",
-    "yafs": "^1.37.0",
     "zarro": "^1.198.0"
   },
   "dependencies": {
-    "debug": "^4.4.1"
+    "debug": "^4.4.1",
+    "yafs": "^1.37.0"
   }
 }
