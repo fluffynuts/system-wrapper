@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "main": "index.js",
   "scripts": {
-    "test": "jest",
+    "test": "jest --no-cache",
     "clean-dist": "rimraf dist",
     "generate-index": "node generate-index.js",
     "prebuild": "run-p clean-dist generate-index",
@@ -11,6 +11,7 @@
     "lint": "tslint -p .",
     "pretest": "rimraf .jest-cache",
     "zarro": "zarro",
+    "echo": "echo foo",
     "prerelease": "run-s build lint test",
     "release": "cross-env VERSION_INCREMENT_STRATEGY=minor run-s \"zarro release-npm\"",
     "prerelease-beta": "run-s build lint test",

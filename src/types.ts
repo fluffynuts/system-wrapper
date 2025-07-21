@@ -49,6 +49,9 @@ export interface SystemOptions {
     // soon as it spawns
     onChildSpawned?: (child: ChildProcess, originalOptions: SystemOptionsWithKill) => void;
 
+    // when set to true, SystemError values will be _returned_ instead
+    // of thrown
+    noThrow?: boolean
 }
 
 export interface SystemOptionsWithKill extends SystemOptions {

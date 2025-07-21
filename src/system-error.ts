@@ -31,14 +31,14 @@ export class SystemError extends Error {
         message: string,
         exe: string,
         args: string[] | undefined,
-        exitCode: number,
-        stdout: Nullable<string[]>,
-        stderr: Nullable<string[]>
+        exitCode?: number | undefined,
+        stdout?: Nullable<string[]>,
+        stderr?: Nullable<string[]>
     ) {
         super(message);
         this._args = args || [];
         this._exe = exe;
-        this._exitCode = exitCode;
+        this._exitCode = exitCode || Number.MIN_VALUE;
         this._stderr = stderr ? [ ...stderr ] : null;
         this._stdout = stdout ? [ ...stdout ] : null;
     }

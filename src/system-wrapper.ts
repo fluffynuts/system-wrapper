@@ -89,8 +89,10 @@ async function systemWrapper(
     program: string,
     args?: string[],
     options?: SystemOptions
-): Promise<SystemResult> {
+): Promise<SystemResult | SystemError> {
     let alreadyExited = false;
+    let alreadyClosed = false;
+    let childError: Optional<string> = undefined;
     const opts = fillOut(options);
     if (opts.suppressOutput === undefined) {
         opts.suppressOutput = !!opts.stderr || !!opts.stdout;
@@ -141,7 +143,7 @@ async function systemWrapper(
         spawnOptions
     });
     const result = new SystemResult(`${exe}`, programArgs, undefined, [], []);
-    return new Promise<SystemResult>((resolve, reject) => {
+    return new Promise<SystemResult | SystemError>((resolve, reject) => {
         const child = child_process.spawn(
             exe,
             programArgs as ReadonlyArray<string>,
@@ -161,12 +163,25 @@ async function systemWrapper(
                 }
             }
         }
+        if (options?.timeout === undefined) {
+            // when a timeout is set, this will likely
+            // trigger, but that's an intentional choice
+            // to (perhaps) cut the process short
+            setTimeout(() => {
+                if (!child.connected && !hasAlreadyCompleted()) {
+                    const fn = options?.noThrow ? resolve : reject;
+                    return fn(new SystemError(
+                            `Unable to execute child process\n${exe} ${args?.join(" ")}`,
+                            exe, args
+                        )
+                    );
+                }
+            }, 1000);
+        }
         const stdoutFn = typeof opts.stdout === "function" ? opts.stdout : noop;
         const stderrFn = typeof opts.stderr === "function" ? opts.stderr : noop;
-        let lastIo = Date.now();
         const
             stdoutLineBuffer = new LineBuffer(s => {
-                lastIo = Date.now();
                 result.stdout.push(s);
                 stdoutFn(s);
                 if (opts.suppressOutput) {
@@ -175,7 +190,6 @@ async function systemWrapper(
                 console.log(s);
             }),
             stderrLineBuffer = new LineBuffer(s => {
-                lastIo = Date.now();
                 result.stderr.push(s);
                 stderrFn(s);
                 if (opts.suppressOutput) {
@@ -197,26 +211,19 @@ async function systemWrapper(
         child.on("close", handleExit.bind(null, "close"));
 
         function handleError(e: string) {
-            if (hasExited()) {
-                return;
-            }
-            debug("child errors", e);
-            return reject(generateError(
-                `Error spawning process: ${e}\n${exe} ${programArgs.map(quoteIfRequired)}`
-            ));
+            debug("storing child error", e);
+            childError = e;
         }
 
         async function handleExit(
             ctx: string,
             code: number
         ) {
-            while (Date.now() - lastIo < 50) {
-                await sleep(10);
-            }
-
-            if (hasExited()) {
+            if (!canExit(ctx)) {
+                debug("can't exit yet");
                 return;
             }
+
             debug(`child exited with code: ${code}`);
             const moreInfo = generateMoreInfo(result);
             if (code) {
@@ -224,7 +231,8 @@ async function systemWrapper(
                     `Process exited (${ctx}) with non-zero code: ${code}\n${moreInfo}`.trim(),
                     code
                 );
-                return reject(errResult);
+                const fn = options?.noThrow ? resolve : reject;
+                return fn(errResult);
             }
             result.exitCode = code;
             return resolve(result);
@@ -240,6 +248,11 @@ async function systemWrapper(
                 "attempted to run:",
                 generateCommandLineFor(result)
             ];
+            if (childError) {
+                lines.push(childError);
+            } else {
+                debug(`childError not recorded yet!`);
+            }
             if (result.stderr && result.stderr.length) {
                 lines.push("stderr:");
                 for (const line of result.stderr) {
@@ -297,14 +310,45 @@ async function systemWrapper(
             return parts.join("\n");
         }
 
-        function hasExited() {
-            if (alreadyExited) {
+        function canExit(ctx: string): boolean {
+            debug(`canExit: ${ctx}`);
+            if (alreadyExited && alreadyClosed) {
+                debug(`canExit: alreadyExited && alreadyClosed`);
                 return true;
+            }
+            if (ctx === "exit") {
+                alreadyExited = true;
+            }
+            if (ctx === "close") {
+                alreadyClosed = true;
+            }
+            if (!alreadyClosed || !alreadyExited) {
+                debug(`canExit`, { alreadyClosed, alreadyExited });
+                return false;
             }
             flushBuffers();
             destroyPipesOn(child);
-            alreadyExited = true;
-            return false;
+            debug(`canExit: exiting on event: ${ctx}`);
+            return true;
+        }
+
+        function hasAlreadyCompleted() {
+            return alreadyExited && alreadyClosed;
+            // if (alreadyExited && alreadyClosed) {
+            //     return true;
+            // }
+            // if (ctx === "exit") {
+            //     alreadyExited = true;
+            // }
+            // if (ctx === "close") {
+            //     alreadyClosed = true;
+            // }
+            // if (!alreadyClosed || !alreadyExited) {
+            //     return false;
+            // }
+            // flushBuffers();
+            // destroyPipesOn(child);
+            // return true;
         }
 
         function flushBuffers() {

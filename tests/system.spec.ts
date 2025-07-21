@@ -5,6 +5,7 @@ import { faker } from "@faker-js/faker";
 import { readTextFile } from "yafs";
 import { ChildProcess } from "child_process";
 import { system as sut, SystemError, which } from "../src";
+import { chmodSync } from "fs";
 
 const { spyOn } = jest;
 const { stringContaining } = expect;
@@ -15,7 +16,7 @@ describe(`system`, () => {
             // Arrange
             const
                 username = (os.userInfo().username as string).toLowerCase();
-            spyOn(console, "log");
+            spyOn(console, "log").mockImplementation(noop);
             // Act
             const result = await sut("whoami");
             // Assert
@@ -60,18 +61,48 @@ describe(`system`, () => {
                 await Sandbox.destroyAll();
             });
         });
+    } else {
+        describe(`shell script`, () => {
+            describe(`when executable`, () => {
+                it(`should run it and return the result`, async () => {
+                    // Arrange
+                    spyOn(console, "log");
+                    const
+                        sandbox = await Sandbox.create(),
+                        script = `${faker.word.words(1)}.bat`,
+                        fullPath = sandbox.fullPathFor(script);
+                    await sandbox.writeFile(script, "#!/bin/bash\necho hello world\n");
+                    chmodSync(fullPath, 0o777);
+                    // Act
+                    const result = await sut(fullPath, [ "foo" ]);
+                    // Assert
+                    expect(result.exitCode)
+                        .toEqual(0);
+                    expect(result.stdout)
+                        .toContain("hello world");
+                    expect(console.log)
+                        .toHaveBeenCalledWith("hello world");
+                });
+            });
 
-        describe(`npm script`, () => {
-            it(`should run it and return the result`, async () => {
-                // Arrange
-                spyOn(console, "log");
-                // Act
-                const result = await sut("npm", [ "run", "echo" ]);
-                // Assert
-                expect(result.exitCode)
-                    .toEqual(0);
-                expect(result.stdout)
-                    .toContain("foo");
+            describe(`when cannot be executed`, () => {
+                it(`should throw`, async () => {
+                    // Arrange
+                    spyOn(console, "log");
+                    const
+                        sandbox = await Sandbox.create(),
+                        script = `${faker.word.words(1)}.bat`,
+                        fullPath = sandbox.fullPathFor(script);
+                    await sandbox.writeFile(script, "#!/bin/bash\necho hello world\n");
+                    // Act
+                    const result = await sut(fullPath, [ "foo" ], {
+                        noThrow: true
+                    });
+                    // Assert
+
+                    expect(sut.isError(result))
+                        .toBeTrue();
+                });
             });
 
             afterEach(async () => {
@@ -79,6 +110,25 @@ describe(`system`, () => {
             });
         });
     }
+    describe(`npm script`, () => {
+        it(`should run it and return the result`, async () => {
+            // Arrange
+            spyOn(console, "log");
+            // Act
+            const result = await sut("npm", [ "run", "echo" ], {
+                suppressOutput: true
+            });
+            // Assert
+            expect(result.exitCode)
+                .toEqual(0);
+            expect(result.stdout)
+                .toContain("foo");
+        });
+
+        afterEach(async () => {
+            await Sandbox.destroyAll();
+        });
+    });
     describe(`passing arguments`, () => {
         it(`should pass the arguments`, async () => {
             // Arrange
@@ -168,7 +218,7 @@ describe(`system`, () => {
             const args = [ sandbox.fullPathFor("foo.js") ].concat(words);
             // Act
             try {
-                await sut("node", args, { suppressOutput: true });
+                await sut("node", args, { suppressOutput: false });
             } catch (e) {
                 const err = e as SystemError;
                 expect(err.exitCode)
@@ -489,33 +539,6 @@ describe(`system`, () => {
                 .toBeDefined();
             expect(child?.killed)
                 .toBeTrue();
-        });
-    });
-
-    describe(`discovery`, () => {
-        // just double-checking that the system command doesn't, somehow, drop io
-        it.skip(`should record all output from the external process`, async () => {
-            // Arrange
-            // Act
-            const result = await sut(
-                "dotnet", [
-                    "test",
-                    "C:\\code\\opensource\\zarro\\tests\\resources\\dotnet-core-unit-tests\\src\\Project1.Tests\\Project1.Tests.csproj",
-                    "--verbosity",
-                    "quiet",
-                    "--configuration",
-                    "Debug",
-                    "--logger",
-                    "quackers"
-                ], {
-                    suppressOutput: true,
-                    suppressStdIoInErrors: true,
-                    timeout: undefined,
-                    stdout: (s: string) => console.log(`(live) ${s}`)
-                }
-            );
-            // Assert
-            console.log(result.stdout.join("\n"));
         });
     });
 
