@@ -239,29 +239,29 @@ async function systemWrapper(
         }
 
         function generateMoreInfo(
-            result: SystemResult
+            res: SystemResult
         ): string {
-            if (!result) {
+            if (!res) {
                 return "(no more info available)";
             }
             const lines = [
                 "attempted to run:",
-                generateCommandLineFor(result)
+                generateCommandLineFor(res)
             ];
             if (childError) {
                 lines.push(childError);
             } else {
                 debug(`childError not recorded yet!`);
             }
-            if (result.stderr && result.stderr.length) {
+            if (res.stderr && res.stderr.length) {
                 lines.push("stderr:");
-                for (const line of result.stderr) {
+                for (const line of res.stderr) {
                     lines.push(`  ${line}`);
                 }
             }
-            if (result.stdout && result.stdout.length) {
+            if (res.stdout && res.stdout.length) {
                 lines.push("stdout:");
-                for (const line of result.stdout) {
+                for (const line of res.stdout) {
                     lines.push(`  ${line}`);
                 }
             }
@@ -371,6 +371,7 @@ function handleStdIo(
 }
 
 function noop(_: string | Buffer) {
+    // intentionally left blank
 }
 
 function destroyPipesOn(child: ChildProcess) {

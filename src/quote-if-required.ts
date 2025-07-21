@@ -34,6 +34,6 @@ function isWhackyDOSQuoting(str: string): boolean {
     if (str.indexOf(`"`) === -1) {
         return false;
     }
-    const parts = str.split('"');
+    const parts = str.split(`"`);
     return !hasWhitespace(parts[0]);
 }

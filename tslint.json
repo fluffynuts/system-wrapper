@@ -9,6 +9,8 @@
       true,
       "double"
     ],
+    "no-conditional-assignment": false,
+    "trailing-comma": false,
     "object-literal-sort-keys": false,
     "max-classes-per-file": false,
     "array-type": false,

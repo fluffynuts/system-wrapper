@@ -81,7 +81,7 @@ process.on("exit", async () => {
     const promises = toCleanAtExit.map(
         async p => {
             try {
-                await rm(p)
+                await rm(p);
             } catch (e) {
                 // suppress: don't fail exit due to locked file
             }

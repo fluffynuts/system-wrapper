@@ -51,7 +51,7 @@ export interface SystemOptions {
 
     // when set to true, SystemError values will be _returned_ instead
     // of thrown
-    noThrow?: boolean
+    noThrow?: boolean;
 }
 
 export interface SystemOptionsWithKill extends SystemOptions {
@@ -99,4 +99,3 @@ export interface System
 
     isResult(o: any): o is SystemResult;
 }
-
