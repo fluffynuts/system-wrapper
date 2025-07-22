@@ -6,7 +6,7 @@ on the I/O front.
 usage
 ---
 
-```
+```javascript
 import { system } from "system-wrapper";
 
 // later
