@@ -20,11 +20,24 @@ import { fileExists } from "yafs";
 import * as child_process from "child_process";
 import { SpawnOptions } from "child_process";
 import * as Stream from "node:stream";
-import { sleep } from "./sleep";
 
 const
+    systemLaunchTimeoutVar = "SYSTEM_LAUNCH_TIMEOUT_MS",
     debug = debugFactory(__filename),
-    isWindows = os.platform() === "win32";
+    isWindows = os.platform() === "win32",
+    defaultSystemLaunchTimeout = 2000;
+
+// process launch has a timeout for the .connected property
+// because it's quite difficult to tell from the child process
+// object when the provided command was invalid
+function resolveSystemLaunchTimeout() {
+    const envValue = process.env[systemLaunchTimeoutVar];
+    if (!envValue) {
+        return defaultSystemLaunchTimeout;
+    }
+    const parsed = parseInt(envValue, 10);
+    return isNaN(parsed) ? defaultSystemLaunchTimeout : parsed;
+}
 
 function fillOut(opts?: SpawnOptions | ExtraSpawnOptions): SpawnOptionsWithContext {
     const result = (opts || {}) as SpawnOptionsWithContext;
@@ -170,13 +183,24 @@ async function systemWrapper(
             setTimeout(() => {
                 if (!child.connected && !hasAlreadyCompleted()) {
                     const fn = options?.noThrow ? resolve : reject;
-                    return fn(new SystemError(
-                            `Unable to execute child process\n${exe} ${args?.join(" ")}`,
+                    return fn(new SystemError(`
+Timed out waiting for the child process to start
+
+${exe} ${args?.join(" ")}
+
+This can happen if:
+1. the command you provided is invalid
+   - set DEBUG='*', find the run command and attempt to run it manually
+2. the child process is just _very_ slow to start (takes more than ${resolveSystemLaunchTimeout()}ms)
+
+If you believe this is an error, try extending the timeout
+with the environment variable ${systemLaunchTimeoutVar}
+and if the error persists, raise an issue at github.`,
                             exe, args
                         )
                     );
                 }
-            }, 1000);
+            }, resolveSystemLaunchTimeout());
         }
         const stdoutFn = typeof opts.stdout === "function" ? opts.stdout : noop;
         const stderrFn = typeof opts.stderr === "function" ? opts.stderr : noop;
