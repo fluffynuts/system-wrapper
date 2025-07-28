@@ -181,7 +181,7 @@ async function systemWrapper(
             // trigger, but that's an intentional choice
             // to (perhaps) cut the process short
             setTimeout(() => {
-                if (!child.connected && !hasAlreadyCompleted()) {
+                if (!child.pid && !hasAlreadyCompleted()) {
                     const fn = options?.noThrow ? resolve : reject;
                     return fn(new SystemError(`
 Timed out waiting for the child process to start
