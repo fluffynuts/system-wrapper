@@ -176,11 +176,12 @@ async function systemWrapper(
                 }
             }
         }
+        let timer: NodeJS.Timeout | undefined;
         if (options?.timeout === undefined) {
             // when a timeout is set, this will likely
             // trigger, but that's an intentional choice
             // to (perhaps) cut the process short
-            setTimeout(() => {
+            timer = setTimeout(() => {
                 if (!child.pid && !hasAlreadyCompleted()) {
                     const fn = options?.noThrow ? resolve : reject;
                     return fn(new SystemError(`
@@ -357,22 +358,12 @@ and if the error persists, raise an issue at github.`,
         }
 
         function hasAlreadyCompleted() {
-            return alreadyExited && alreadyClosed;
-            // if (alreadyExited && alreadyClosed) {
-            //     return true;
-            // }
-            // if (ctx === "exit") {
-            //     alreadyExited = true;
-            // }
-            // if (ctx === "close") {
-            //     alreadyClosed = true;
-            // }
-            // if (!alreadyClosed || !alreadyExited) {
-            //     return false;
-            // }
-            // flushBuffers();
-            // destroyPipesOn(child);
-            // return true;
+            const completed = alreadyExited && alreadyClosed;
+            if (completed && timer) {
+                clearTimeout(timer);
+                timer = undefined;
+            }
+            return completed;
         }
 
         function flushBuffers() {
