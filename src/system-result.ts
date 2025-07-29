@@ -10,7 +10,7 @@ function splitIfNecessary(
         .map(line => line.replace(/\r$/, ""));
 }
 
-class SystemResultBuilder {
+export class SystemResultBuilder {
     private _exe: string = "";
     private _args: string[] = [];
     private _exitCode: number = 0;
