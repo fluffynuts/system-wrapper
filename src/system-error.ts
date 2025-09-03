@@ -21,11 +21,25 @@ export class SystemError extends Error {
         return this._stderr ? [ ...this._stderr ] : [];
     }
 
+    get started() {
+        return this._started;
+    }
+
+    get completed() {
+        return this._completed;
+    }
+
+    get runTimeMs() {
+        return this._completed - this._started;
+    }
+
     private readonly _args: string[];
     private readonly _exe: string;
     private readonly _exitCode: number;
     private readonly _stdout: Nullable<string[]>;
     private readonly _stderr: Nullable<string[]>;
+    private readonly _started: number;
+    private readonly _completed: number;
 
     constructor(
         message: string,
@@ -33,7 +47,8 @@ export class SystemError extends Error {
         args: string[] | undefined,
         exitCode?: number | undefined,
         stdout?: Nullable<string[]>,
-        stderr?: Nullable<string[]>
+        stderr?: Nullable<string[]>,
+        started?: number
     ) {
         super(message);
         this._args = args || [];
@@ -41,6 +56,8 @@ export class SystemError extends Error {
         this._exitCode = exitCode || Number.MIN_VALUE;
         this._stderr = stderr ? [ ...stderr ] : null;
         this._stdout = stdout ? [ ...stdout ] : null;
+        this._started = started ?? Date.now();
+        this._completed = Date.now();
     }
 
     public toString(): string {

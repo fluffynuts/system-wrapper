@@ -542,6 +542,55 @@ describe(`system`, () => {
         });
     });
 
+    describe(`reporting runtime`, () => {
+        it(`happy path: should report runtime in ms on result`, async () => {
+            // Arrange
+            const
+                before = Date.now();
+            // Act
+            const result = await sut(
+                `node -e "(async function() { await new Promise(resolve => setTimeout(resolve, 1000)); })()"`,
+                []
+            );
+            const after = Date.now();
+
+            // Assert
+            const runtime = after - before;
+            expect(runtime)
+                .toBeGreaterThanOrEqual(1000);
+            expect(result.runTimeMs)
+                .toBeGreaterThanOrEqual(1000);
+            const delta = Math.abs(runtime - result.runTimeMs);
+            expect(delta)
+                .toBeLessThan(100);
+        });
+        it(`sad path: should report runtime in ms on error`, async () => {
+            // Arrange
+            const
+                before = Date.now();
+            // Act
+            const result = await sut(
+                `node -e "(async function() { await new Promise(resolve => setTimeout(resolve, 1000)); process.exit(1); })()"`,
+                [], {
+                    noThrow: true
+                }
+            );
+            const after = Date.now();
+
+            // Assert
+            expect(sut.isError(result))
+                .toBeTrue();
+            const runtime = after - before;
+            expect(runtime)
+                .toBeGreaterThanOrEqual(1000);
+            expect(result.runTimeMs)
+                .toBeGreaterThanOrEqual(1000);
+            const delta = Math.abs(runtime - result.runTimeMs);
+            expect(delta)
+                .toBeLessThan(100);
+        });
+    });
+
     function noop() {
         // intentionally left empty
     }

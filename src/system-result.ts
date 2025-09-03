@@ -77,6 +77,21 @@ export class SystemResult {
         return o instanceof SystemResult;
     }
 
+    public get started(): number {
+        return this._started;
+    }
+
+    public get completed(): number | undefined {
+        return this._completed;
+    }
+
+    public get runTimeMs(): number {
+        return (this._completed ?? Date.now()) - this._started;
+    }
+
+    private _started: number;
+    private _completed: number | undefined;
+
     constructor(
         public exe: string,
         public args: string[],
@@ -84,6 +99,11 @@ export class SystemResult {
         public stderr: string[],
         public stdout: string[]
     ) {
+        this._started = Date.now();
+    }
+
+    public complete() {
+        this._completed = Date.now();
     }
 
     public isResult(): this is SystemResult {

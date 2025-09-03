@@ -162,6 +162,7 @@ async function systemWrapper(
             programArgs as ReadonlyArray<string>,
             spawnOptions as SpawnOptionsWithStdioTuple<StdioNull, StdioNull, StdioNull>
         );
+        const started = Date.now();
         if (!!options) {
             const optsWithKill = options as SystemOptionsWithKill;
             optsWithKill.kill = (signal?: NodeJS.Signals | number) => {
@@ -197,7 +198,7 @@ This can happen if:
 If you believe this is an error, try extending the timeout
 with the environment variable ${systemLaunchTimeoutVar}
 and if the error persists, raise an issue at github.`,
-                            exe, args
+                            exe, args, started
                         )
                     );
                 }
@@ -249,6 +250,7 @@ and if the error persists, raise an issue at github.`,
                 return;
             }
 
+            result.complete();
             debug(`child exited with code: ${code}`);
             const moreInfo = generateMoreInfo(result);
             if (code) {
@@ -301,7 +303,7 @@ and if the error persists, raise an issue at github.`,
 
         function generateError(
             message: string,
-            exitCode?: number
+            exitCode?: number,
         ) {
             if (system.isError(result)) {
                 const errorDetails = gatherErrorDetails(result);
@@ -315,7 +317,8 @@ and if the error persists, raise an issue at github.`,
                 args,
                 exitCode ?? -1,
                 result.stdout,
-                result.stderr
+                result.stderr,
+                started
             );
         }
 
